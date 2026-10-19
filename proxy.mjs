@@ -1477,9 +1477,16 @@ async function proxyFetch(urlStr, options = {}) {
   });
 }
 
+// Bun 的 node:http 基于 fetch 实现：CONNECT 方法直接报 "fetch() URL is invalid"，
+// 且 createConnection 被忽略，上面的手搓隧道在 Bun 下无法工作。
+// Bun 原生 fetch 支持 { proxy }（https 目标走 CONNECT，http 目标走 absolute-form 转发，
+// URL 中的 user:pass 会转成 Proxy-Authorization），直接用它。
+const IS_BUN = !!process.versions.bun;
+
 /** 上游请求入口：配了代理走隧道，否则用原生 fetch（默认路径行为完全不变）。 */
 function upstreamFetch(urlStr, options) {
-  return UPSTREAM_PROXY ? proxyFetch(urlStr, options) : fetch(urlStr, options);
+  if (!UPSTREAM_PROXY) return fetch(urlStr, options);
+  return IS_BUN ? fetch(urlStr, { ...options, proxy: UPSTREAM_PROXY }) : proxyFetch(urlStr, options);
 }
 
 // ── 流式转发 ────────────────────────────────────────

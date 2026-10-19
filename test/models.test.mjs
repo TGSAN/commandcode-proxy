@@ -39,8 +39,8 @@ async function startModelProxy({ pricingStatus = 200 } = {}) {
       CC_USE_PROVIDER_MODELS: 'true',
       CC_TEST_PRICING_STATUS: String(pricingStatus),
       CC_TEST_PRICING_COUNTER_FILE: counter,
-      NODE_OPTIONS: `--require=${MOCK}`,
     },
+    execArgv: ['--require', MOCK],
     cwd,
   });
   return {
