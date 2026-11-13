@@ -62,6 +62,7 @@ commandcode/
 | `useProviderModelsWithPlanFilter` | `false` | Filter models by the subscription plan for the current API key |
 | `modelRefreshIntervalMs` | `300000` | Model list cache refresh interval (5 min) |
 | `zdr` | `false` | Request ZDR-only routing from Command Code |
+| `zdrFallback` | `false` | When a ZDR request gets `422 CMD_ZDR_NO_PROVIDERS`, mark the model as non-ZDR (cached 24h, in-memory) and immediately resend without ZDR. **Data for such models goes to non-ZDR upstreams** |
 | `cliMode` | `agent` | Envelope `mode`. Upstream enum: `agent` / `learning` / `custom-agent` / `custom-agent-create` / `title-gen` / `tool-desc` / `compact` / `vision` |
 | `cliModeMixedMaps` | `null` | Weighted random envelope `mode` per request, e.g. `{"compact":1,"agent":9}` = 10% compact, 90% agent; unlisted modes never appear. Weights may be decimals; overrides `cliMode` when set |
 | `cliSessionMode` | `interactive` | `mode` inside the lifecycle metadata (**a different enum**: `interactive` / `non-interactive`) |
@@ -81,6 +82,7 @@ commandcode/
 | `LOG_FILE` | empty | Log file → `logFile` (**synchronous writes**, see [Other notes](#other-notes)) |
 | `CC_USE_PROVIDER_MODELS` | `true` | Fetch the model list dynamically → `useProviderModels` |
 | `CMD_ZDR` | off | `1` enables ZDR-only routing → `zdr` |
+| `CC_ZDR_FALLBACK` | off | `1` enables → `zdrFallback` |
 | `CC_CLI_MODE` | `agent` | Envelope `mode` → `cliMode` |
 | `CC_CLI_MODE_MIXED_MAPS` | empty | JSON weight map → `cliModeMixedMaps` |
 | `CC_CLI_SESSION_MODE` | `interactive` | Lifecycle metadata `mode` → `cliSessionMode` |

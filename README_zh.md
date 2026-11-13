@@ -62,6 +62,7 @@ commandcode/
 | `useProviderModelsWithPlanFilter` | `false` | 使用当前 API Key 的订阅套餐过滤模型列表 |
 | `modelRefreshIntervalMs` | `300000` | 模型列表缓存刷新间隔（5min） |
 | `zdr` | `false` | 请求 Command Code 使用 ZDR-only 路由 |
+| `zdrFallback` | `false` | ZDR 请求遇到 `422 CMD_ZDR_NO_PROVIDERS` 时，把该模型记为不支持 ZDR（缓存 24 小时，进程内），并立即改发非 ZDR 请求。**会让这类模型的数据走非 ZDR 上游** |
 | `cliMode` | `agent` | 信封 `mode`。上游枚举：`agent` / `learning` / `custom-agent` / `custom-agent-create` / `title-gen` / `tool-desc` / `compact` / `vision` |
 | `cliModeMixedMaps` | `null` | 按权重随机选每个请求的信封 `mode`，如 `{"compact":1,"agent":9}` = 10% compact、90% agent，未列出的模式不会出现。权重可为小数；设置后覆盖 `cliMode` |
 | `cliSessionMode` | `interactive` | lifecycle 元数据里的 `mode`（**另一个枚举**：`interactive` / `non-interactive`）|
@@ -81,6 +82,7 @@ commandcode/
 | `LOG_FILE` | 空 | 日志文件 → `logFile`（**同步写**，见[其它注意事项](#其它注意事项)）|
 | `CC_USE_PROVIDER_MODELS` | `true` | 动态拉取模型列表 → `useProviderModels` |
 | `CMD_ZDR` | 关 | `1` 开启 ZDR-only 路由 → `zdr` |
+| `CC_ZDR_FALLBACK` | 关 | `1` 开启 → `zdrFallback` |
 | `CC_CLI_MODE` | `agent` | 信封 `mode` → `cliMode` |
 | `CC_CLI_MODE_MIXED_MAPS` | 空 | JSON 权重表 → `cliModeMixedMaps` |
 | `CC_CLI_SESSION_MODE` | `interactive` | lifecycle 元数据的 `mode` → `cliSessionMode` |

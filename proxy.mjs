@@ -27,6 +27,7 @@ function loadConfig() {
     useProviderModelsWithPlanFilter: false,
     modelRefreshIntervalMs: 5 * 60 * 1000,  // 5 minutes
     zdr: false,
+    zdrFallback: false, // ZDR 请求遇到 422 CMD_ZDR_NO_PROVIDERS 时，记住该模型 24h 并改发非 ZDR 请求
     cliMode: 'agent', // 信封 mode。服务端枚举（真机 400 报出来的）：agent|learning|custom-agent|custom-agent-create|title-gen|tool-desc|compact|vision
     cliModeMixedMaps: null, // 按权重随机选每个请求的 cliMode，如 {"agent":1,"learning":9}；设了（且总权重>0）就覆盖 cliMode
     cliSessionMode: 'interactive', // lifecycle metadata 的 mode —— 注意这是另一个枚举：interactive | non-interactive
@@ -54,6 +55,7 @@ function loadConfig() {
   if (process.env.LOG_FILE) defaults.logFile = process.env.LOG_FILE;
   if (process.env.CC_USE_PROVIDER_MODELS) defaults.useProviderModels = process.env.CC_USE_PROVIDER_MODELS !== 'false';
   if (process.env.CMD_ZDR !== undefined) defaults.zdr = process.env.CMD_ZDR === '1';
+  if (process.env.CC_ZDR_FALLBACK !== undefined) defaults.zdrFallback = process.env.CC_ZDR_FALLBACK === '1';
   if (process.env.CC_FINGERPRINT_SALT !== undefined) defaults.fingerprintSalt = process.env.CC_FINGERPRINT_SALT;
   if (process.env.CC_DEVICE_PROJECT_DIR) defaults.deviceProjectDir = process.env.CC_DEVICE_PROJECT_DIR;
   if (process.env.CC_CLI_MODE) defaults.cliMode = process.env.CC_CLI_MODE;
@@ -1508,6 +1510,17 @@ function upstreamFetch(urlStr, options) {
 
 // ── 流式转发 ────────────────────────────────────────
 
+// zdrFallback：不支持 ZDR 的模型 ID → 过期时间戳
+const ZDR_UNSUPPORTED_TTL_MS = 24 * 60 * 60 * 1000;
+const zdrUnsupported = new Map();
+function isZdrUnsupported(model) {
+  const exp = zdrUnsupported.get(model);
+  if (exp === undefined) return false;
+  if (exp > Date.now()) return true;
+  zdrUnsupported.delete(model);
+  return false;
+}
+
 async function forwardToCC(body, apiKey, incomingHeaders = {}, signal, promptCacheKey) {
   const url = `${CFG.apiBase}/alpha/generate`;
   const traceparent = generateTraceparent();
@@ -1535,18 +1548,25 @@ async function forwardToCC(body, apiKey, incomingHeaders = {}, signal, promptCac
     'traceparent': traceparent,
   };
 
-  if (CFG.zdr || incomingHeaders['x-cmd-zdr'] === '1') {
+  const model = body.params && body.params.model;
+  const wantZdr = CFG.zdr || incomingHeaders['x-cmd-zdr'] === '1';
+  if (wantZdr && !(CFG.zdrFallback && isZdrUnsupported(model))) {
     headers['x-cmd-zdr'] = '1';
   }
 
-  const response = await upstreamFetch(url, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-    signal,
-  });
+  const payload = JSON.stringify(body);
+  const response = await upstreamFetch(url, { method: 'POST', headers, body: payload, signal });
 
-  return response;
+  if (response.status !== 422 || !CFG.zdrFallback || !headers['x-cmd-zdr']) return response;
+  // 只有 422 才读 body 判断；不是 ZDR 错误就原样重建响应交给调用方
+  const text = await response.text().catch(() => '');
+  if (!text.includes('CMD_ZDR_NO_PROVIDERS')) {
+    return new Response(text, { status: response.status, statusText: response.statusText, headers: response.headers });
+  }
+  zdrUnsupported.set(model, Date.now() + ZDR_UNSUPPORTED_TTL_MS);
+  log('warn', 'Model has no ZDR upstream, retrying without ZDR (cached 24h)', { model });
+  delete headers['x-cmd-zdr'];
+  return upstreamFetch(url, { method: 'POST', headers, body: payload, signal });
 }
 
 // ── 路由 ────────────────────────────────────────────

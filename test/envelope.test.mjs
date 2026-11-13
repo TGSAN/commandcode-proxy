@@ -147,3 +147,38 @@ test('cliModeMixedMaps 按权重选 mode 并覆盖 cliMode；零权重模式不�
     }
   } finally { await s.close(); }
 });
+
+test('zdrFallback：422 CMD_ZDR_NO_PROVIDERS 后改发非 ZDR 并缓存该模型', async () => {
+  const ZDR_ERR = JSON.stringify({ success: false, error: { code: 'CMD_ZDR_NO_PROVIDERS', status: 422 } });
+  const s = await setup({
+    env: { CMD_ZDR: '1', CC_ZDR_FALLBACK: '1' },
+    onRequest: (req, res) => {
+      if (req.url === '/alpha/generate' && req.headers['x-cmd-zdr'] === '1') {
+        res.writeHead(422, { 'Content-Type': 'application/json' }); res.end(ZDR_ERR); return true;
+      }
+    },
+  });
+  const zdrFlags = () => s.mock.seen.filter(x => x.url === '/alpha/generate').map(x => x.headers['x-cmd-zdr'] ?? null);
+  try {
+    const req = { model: 'm', stream: true, messages: [{ role: 'user', content: 'hi' }] };
+    const r1 = await s.proxy.post('/v1/chat/completions', req, AUTH);
+    await r1.text();
+    assert.equal(r1.status, 200);
+    assert.deepEqual(zdrFlags(), ['1', null], '首次：ZDR 失败后重发非 ZDR');
+    const r2 = await s.proxy.post('/v1/chat/completions', req, AUTH);
+    await r2.text();
+    assert.deepEqual(zdrFlags(), ['1', null, null], '缓存命中：直接发非 ZDR');
+  } finally { await s.close(); }
+});
+
+test('zdrFallback 关闭时 422 CMD_ZDR_NO_PROVIDERS 直接透出', async () => {
+  const s = await setup({ env: { CMD_ZDR: '1' }, status: 422,
+    errorBody: JSON.stringify({ success: false, error: { code: 'CMD_ZDR_NO_PROVIDERS', status: 422 } }) });
+  try {
+    const r = await s.proxy.post('/v1/chat/completions',
+      { model: 'm', stream: true, messages: [{ role: 'user', content: 'hi' }] }, AUTH);
+    await r.text();
+    assert.equal(r.status, 400, '代理把上游 422 映射成 400');
+    assert.equal(s.mock.generateCount(), 1, '不重发');
+  } finally { await s.close(); }
+});
