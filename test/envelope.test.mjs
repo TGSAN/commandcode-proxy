@@ -136,3 +136,14 @@ test('lifecycle metadata 的 mode 用另一个枚举（CC_CLI_SESSION_MODE）', 
       '信封 mode 与 lifecycle mode 是两个独立配置项');
   } finally { await s.close(); }
 });
+
+test('cliModeMixedMaps 按权重选 mode 并覆盖 cliMode；零权重模式不出现', async () => {
+  const s = await setup({ env: { CC_CLI_MODE: 'agent', CC_CLI_MODE_MIXED_MAPS: '{"agent":0,"learning":"0.5","bogus":"x"}' } });
+  try {
+    for (let i = 0; i < 3; i++) {
+      const { body } = await generate(s.proxy, s.mock, '/v1/chat/completions',
+        { model: 'm', stream: true, messages: [{ role: 'user', content: 'hi' }] });
+      assert.equal(body.mode, 'learning');
+    }
+  } finally { await s.close(); }
+});

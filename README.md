@@ -63,6 +63,7 @@ commandcode/
 | `modelRefreshIntervalMs` | `300000` | Model list cache refresh interval (5 min) |
 | `zdr` | `false` | Request ZDR-only routing from Command Code |
 | `cliMode` | `agent` | Envelope `mode`. Upstream enum: `agent` / `learning` / `custom-agent` / `custom-agent-create` / `title-gen` / `tool-desc` / `compact` / `vision` |
+| `cliModeMixedMaps` | `null` | Weighted random envelope `mode` per request, e.g. `{"compact":1,"agent":9}` = 10% compact, 90% agent; unlisted modes never appear. Weights may be decimals; overrides `cliMode` when set |
 | `cliSessionMode` | `interactive` | `mode` inside the lifecycle metadata (**a different enum**: `interactive` / `non-interactive`) |
 | `fingerprintSalt` | `""` | Salt for the device fingerprint — use it to rotate the whole fleet's identity (one key still always reports one device) |
 | `deviceProjectDir` | `""` | Faked project directory (empty = built-in `C:\Users\dev\projects\app`); changing it gives every account a different device |
@@ -81,6 +82,7 @@ commandcode/
 | `CC_USE_PROVIDER_MODELS` | `true` | Fetch the model list dynamically → `useProviderModels` |
 | `CMD_ZDR` | off | `1` enables ZDR-only routing → `zdr` |
 | `CC_CLI_MODE` | `agent` | Envelope `mode` → `cliMode` |
+| `CC_CLI_MODE_MIXED_MAPS` | empty | JSON weight map → `cliModeMixedMaps` |
 | `CC_CLI_SESSION_MODE` | `interactive` | Lifecycle metadata `mode` → `cliSessionMode` |
 | `CC_FINGERPRINT_SALT` | empty | Fingerprint salt → `fingerprintSalt` |
 | `CC_DEVICE_PROJECT_DIR` | empty | Faked project directory → `deviceProjectDir` |

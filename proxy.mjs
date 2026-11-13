@@ -28,6 +28,7 @@ function loadConfig() {
     modelRefreshIntervalMs: 5 * 60 * 1000,  // 5 minutes
     zdr: false,
     cliMode: 'agent', // 信封 mode。服务端枚举（真机 400 报出来的）：agent|learning|custom-agent|custom-agent-create|title-gen|tool-desc|compact|vision
+    cliModeMixedMaps: null, // 按权重随机选每个请求的 cliMode，如 {"agent":1,"learning":9}；设了（且总权重>0）就覆盖 cliMode
     cliSessionMode: 'interactive', // lifecycle metadata 的 mode —— 注意这是另一个枚举：interactive | non-interactive
     fingerprintSalt: '',
     deviceProjectDir: '', // 伪造的项目目录（留空则用内置的 C:\Users\dev\projects\app） // 改这个值 = 让所有账号换一台设备（见设备指纹注释）
@@ -56,6 +57,10 @@ function loadConfig() {
   if (process.env.CC_FINGERPRINT_SALT !== undefined) defaults.fingerprintSalt = process.env.CC_FINGERPRINT_SALT;
   if (process.env.CC_DEVICE_PROJECT_DIR) defaults.deviceProjectDir = process.env.CC_DEVICE_PROJECT_DIR;
   if (process.env.CC_CLI_MODE) defaults.cliMode = process.env.CC_CLI_MODE;
+  if (process.env.CC_CLI_MODE_MIXED_MAPS) {
+    try { defaults.cliModeMixedMaps = JSON.parse(process.env.CC_CLI_MODE_MIXED_MAPS); }
+    catch (e) { console.error('[config] Failed to parse CC_CLI_MODE_MIXED_MAPS:', e.message); }
+  }
   if (process.env.CC_CLI_SESSION_MODE) defaults.cliSessionMode = process.env.CC_CLI_SESSION_MODE;
   if (process.env.CC_EMPTY_SYSTEM_PLACEHOLDER) defaults.emptySystemPlaceholder = process.env.CC_EMPTY_SYSTEM_PLACEHOLDER !== 'false';
   if (process.env.CC_UPSTREAM_PROXY) defaults.upstreamProxy = process.env.CC_UPSTREAM_PROXY;
@@ -64,6 +69,18 @@ function loadConfig() {
 }
 
 const CFG = loadConfig();
+
+// cliModeMixedMaps 的权重表（过滤掉非正/非数字权重）；为空则退回 cliMode
+const CLI_MODE_WEIGHTS = Object.entries(CFG.cliModeMixedMaps || {})
+  .map(([m, w]) => [m, Number(w)]).filter(([, w]) => w > 0);
+const CLI_MODE_TOTAL = CLI_MODE_WEIGHTS.reduce((a, [, w]) => a + w, 0);
+
+function pickCliMode() {
+  if (!CLI_MODE_TOTAL) return CFG.cliMode || 'agent';
+  let r = Math.random() * CLI_MODE_TOTAL;
+  for (const [m, w] of CLI_MODE_WEIGHTS) if ((r -= w) < 0) return m;
+  return CLI_MODE_WEIGHTS[CLI_MODE_WEIGHTS.length - 1][0]; // 浮点误差兜底
+}
 
 // ── 设备指纹（形态与哈希逐字对齐官方 CLI；1.53.1 对齐，1.54.0 复核未变） ──
 // CPU 型号与核数对应表（仅 Windows x64）。
@@ -779,7 +796,7 @@ function buildCcRequest(openaiReq) {
     taste: null,
     skills: null,          // CLI 发 null，不是空串
     permissionMode: 'standard',
-    mode: CFG.cliMode || 'agent',
+    mode: pickCliMode(),
     // threadId 需为合法 UUID，否则整键省略（CLI 的 toWireThreadId）—— 在 forwardToCC 拿到 sessionId 后补
     params: {
       model: model || 'deepseek/deepseek-v4-flash',

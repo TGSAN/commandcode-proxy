@@ -63,6 +63,7 @@ commandcode/
 | `modelRefreshIntervalMs` | `300000` | 模型列表缓存刷新间隔（5min） |
 | `zdr` | `false` | 请求 Command Code 使用 ZDR-only 路由 |
 | `cliMode` | `agent` | 信封 `mode`。上游枚举：`agent` / `learning` / `custom-agent` / `custom-agent-create` / `title-gen` / `tool-desc` / `compact` / `vision` |
+| `cliModeMixedMaps` | `null` | 按权重随机选每个请求的信封 `mode`，如 `{"compact":1,"agent":9}` = 10% compact、90% agent，未列出的模式不会出现。权重可为小数；设置后覆盖 `cliMode` |
 | `cliSessionMode` | `interactive` | lifecycle 元数据里的 `mode`（**另一个枚举**：`interactive` / `non-interactive`）|
 | `fingerprintSalt` | `""` | 设备指纹的盐。**成批换设备身份**就用它（同一个 key 永远报同一台设备）|
 | `deviceProjectDir` | `""` | 伪装的项目目录（空则用内置 `C:\Users\dev\projects\app`）；改了 = 所有账号换一台设备 |
@@ -81,6 +82,7 @@ commandcode/
 | `CC_USE_PROVIDER_MODELS` | `true` | 动态拉取模型列表 → `useProviderModels` |
 | `CMD_ZDR` | 关 | `1` 开启 ZDR-only 路由 → `zdr` |
 | `CC_CLI_MODE` | `agent` | 信封 `mode` → `cliMode` |
+| `CC_CLI_MODE_MIXED_MAPS` | 空 | JSON 权重表 → `cliModeMixedMaps` |
 | `CC_CLI_SESSION_MODE` | `interactive` | lifecycle 元数据的 `mode` → `cliSessionMode` |
 | `CC_FINGERPRINT_SALT` | 空 | 设备指纹盐 → `fingerprintSalt` |
 | `CC_DEVICE_PROJECT_DIR` | 空 | 伪装的项目目录 → `deviceProjectDir` |
